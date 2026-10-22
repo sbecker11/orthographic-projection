@@ -543,6 +543,32 @@ function isLocalStateHost() {
     return location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 }
 
+function initQuitButton() {
+    const button = document.getElementById('quitApp');
+    if (!button || !isLocalStateHost()) {
+        return;
+    }
+    button.hidden = false;
+    button.addEventListener('click', quitApp);
+}
+
+async function quitApp() {
+    const button = document.getElementById('quitApp');
+    button.disabled = true;
+    try {
+        const response = await fetch('/api/quit', { method: 'POST' });
+        if (!response.ok) {
+            throw new Error(`[quit] Local server rejected quit (${response.status})`);
+        }
+    } catch (error) {
+        console.error('[quit] Failed to stop the local server', error);
+        console.log('Remedy: Stop the server from the terminal, then close this tab.');
+        button.disabled = false;
+        return;
+    }
+    window.close();
+}
+
 function readSlider(id) {
     const value = parseFloat(document.getElementById(id).value);
     if (!Number.isFinite(value)) {
@@ -634,6 +660,7 @@ async function loadAppState() {
 // Wait for DOM to be ready before setting up event listeners
 document.addEventListener('DOMContentLoaded', async function() {
     initThemeToggle();
+    initQuitButton();
 
     // Add event listeners
     document.getElementById('zoomFactor').addEventListener('input', function () {
