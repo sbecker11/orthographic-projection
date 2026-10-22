@@ -12,7 +12,7 @@ app.use(express.json());
 // Local instances save point and text changes. Remote hosts only read public/app_state.json.
 app.post('/api/state', (req, res) => {
     if (!isAppState(req.body)) {
-        res.status(400).json({ error: 'Invalid app state. Expected { theme: "light"|"dark", sliders: {zoom, phi, theta}, points: [{x, y}], texts: [{text, x, y}] }.' });
+        res.status(400).json({ error: 'Invalid app state. Expected { theme, layout: {width, height, pageZoom}, sliders, points, texts }.' });
         return;
     }
     const file = JSON.stringify(req.body, null, 2) + '\n';

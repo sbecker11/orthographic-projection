@@ -3,16 +3,17 @@ const scene = new THREE.Scene();
 const baseViewSize = 10;
 let viewSize = baseViewSize;
 
-// Fixed dimensions
-const WIDTH = 500;
-const HEIGHT = 500;
+// Drawing size restored from app state. Defaults match the page before that file loads.
+let canvasWidth = 500;
+let canvasHeight = 500;
+let pageZoom = 1;
 
 // Initialize renderer with fixed dimensions
 const renderer = new THREE.WebGLRenderer({
     canvas: document.getElementById('rotationCanvas'),
     antialias: true
 });
-renderer.setSize(WIDTH, HEIGHT);
+renderer.setSize(canvasWidth, canvasHeight);
 renderer.setClearColor(canvasClearColor(), 1);
 
 // Initialize camera with fixed aspect ratio
@@ -27,9 +28,9 @@ const camera = new THREE.OrthographicCamera(
 
 // Set up renderer and camera
 function updateCameraView() {
-    // Only update the view size for zoom, dimensions stay fixed
-    camera.left = -viewSize / 2;
-    camera.right = viewSize / 2;
+    const aspect = canvasWidth / canvasHeight;
+    camera.left = -(viewSize * aspect) / 2;
+    camera.right = (viewSize * aspect) / 2;
     camera.top = viewSize / 2;
     camera.bottom = -viewSize / 2;
     camera.updateProjectionMatrix();
@@ -577,9 +578,98 @@ function readSlider(id) {
     return value;
 }
 
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+}
+
+function roundToTenth(value) {
+    return Math.round(value * 10) / 10;
+}
+
+let applyingLayout = false;
+
+function applyLayout(layout) {
+    canvasWidth = layout.width;
+    canvasHeight = layout.height;
+    pageZoom = layout.pageZoom;
+    const canvas = document.getElementById('rotationCanvas');
+    canvas.parentElement.style.width = canvasWidth + 'px';
+    canvas.parentElement.style.height = canvasHeight + 'px';
+    applyingLayout = true;
+    renderer.setSize(canvasWidth, canvasHeight);
+    document.documentElement.style.zoom = String(pageZoom);
+    applyingLayout = false;
+    updateCameraView();
+}
+
+function canvasSizeForWindow() {
+    return {
+        width: clamp(Math.round(window.innerWidth - 620), 200, 1600),
+        height: clamp(Math.round(window.innerHeight - 180), 200, 1200)
+    };
+}
+
+function rememberWindowSize() {
+    if (!appStateReady || !isLocalStateHost() || applyingLayout) {
+        return;
+    }
+    const next = canvasSizeForWindow();
+    if (next.width === canvasWidth && next.height === canvasHeight) {
+        return;
+    }
+    applyLayout({ width: next.width, height: next.height, pageZoom });
+    saveAppStateSoon();
+}
+
+function changePageZoom(delta) {
+    if (!appStateReady || !isLocalStateHost()) {
+        return;
+    }
+    const nextZoom = clamp(roundToTenth(pageZoom + delta), 0.5, 2);
+    if (nextZoom === pageZoom) {
+        return;
+    }
+    applyLayout({ width: canvasWidth, height: canvasHeight, pageZoom: nextZoom });
+    saveAppStateSoon();
+}
+
+function initLayoutPersistence() {
+    if (!isLocalStateHost()) {
+        return;
+    }
+    window.addEventListener('resize', rememberWindowSize);
+    window.addEventListener('keydown', function (event) {
+        if (!(event.metaKey || event.ctrlKey) || event.altKey) {
+            return;
+        }
+        if (event.target && event.target.id === 'textInput') {
+            return;
+        }
+        if (event.key === '=' || event.key === '+') {
+            event.preventDefault();
+            changePageZoom(0.1);
+        } else if (event.key === '-' || event.key === '_') {
+            event.preventDefault();
+            changePageZoom(-0.1);
+        }
+    });
+    window.addEventListener('wheel', function (event) {
+        if (!event.ctrlKey) {
+            return;
+        }
+        event.preventDefault();
+        changePageZoom(event.deltaY < 0 ? 0.1 : -0.1);
+    }, { passive: false });
+}
+
 function currentAppState() {
     return {
         theme: currentTheme(),
+        layout: {
+            width: canvasWidth,
+            height: canvasHeight,
+            pageZoom: pageZoom
+        },
         sliders: {
             zoom: readSlider('zoomFactor'),
             phi: readSlider('lineAngle'),
@@ -631,9 +721,10 @@ function applySliders(sliders) {
 
 function applyAppState(state) {
     if (!isAppState(state)) {
-        throw new Error('[app-state] public/app_state.json must contain theme ("light" or "dark"), sliders.zoom (0.2–2), sliders.phi (0–360), sliders.theta (-180–180), points [{x, y}], and texts [{text, x, y}]');
+        throw new Error('[app-state] public/app_state.json must contain theme, layout (width, height, pageZoom), sliders, points, and texts');
     }
     applyTheme(state.theme);
+    applyLayout(state.layout);
     applySliders(state.sliders);
     state.points.forEach((point) => {
         if (typeof point.x !== 'number' || typeof point.y !== 'number') {
@@ -661,6 +752,7 @@ async function loadAppState() {
 document.addEventListener('DOMContentLoaded', async function() {
     initThemeToggle();
     initQuitButton();
+    initLayoutPersistence();
 
     // Add event listeners
     document.getElementById('zoomFactor').addEventListener('input', function () {

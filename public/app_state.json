@@ -1,9 +1,14 @@
 {
   "theme": "dark",
+  "layout": {
+    "width": 500,
+    "height": 500,
+    "pageZoom": 1
+  },
   "sliders": {
-    "zoom": 1.1,
-    "phi": 211,
-    "theta": -59
+    "zoom": 0.9,
+    "phi": 116,
+    "theta": -54
   },
   "points": [
     {
@@ -77,7 +82,7 @@
   ],
   "texts": [
     {
-      "text": "Hello World",
+      "text": "Hello Olympic Athletes",
       "x": 0,
       "y": 0
     }

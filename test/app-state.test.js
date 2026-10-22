@@ -7,6 +7,7 @@ const { isAppState } = require('../public/js/app-state');
 function validState() {
     return {
         theme: 'light',
+        layout: { width: 500, height: 500, pageZoom: 1 },
         sliders: { zoom: 1, phi: 45, theta: 0 },
         points: [{ x: -2, y: 1.5 }],
         texts: [{ text: 'Origin', x: 0.45, y: 0.45 }]
@@ -49,6 +50,39 @@ describe('theme', () => {
             const state = validState();
             state.theme = theme;
             assert.equal(isAppState(state), false, `theme ${JSON.stringify(theme)} should be rejected`);
+        }
+    });
+});
+
+describe('layout', () => {
+    it('accepts canvas size and page zoom inside their ranges', () => {
+        for (const layout of [
+            { width: 200, height: 200, pageZoom: 0.5 },
+            { width: 500, height: 500, pageZoom: 1 },
+            { width: 1600, height: 1200, pageZoom: 2 }
+        ]) {
+            const state = validState();
+            state.layout = layout;
+            assert.equal(isAppState(state), true, `layout ${JSON.stringify(layout)} should be accepted`);
+        }
+    });
+
+    it('rejects a missing layout or a value outside range', () => {
+        const state = validState();
+        delete state.layout;
+        assert.equal(isAppState(state), false);
+        for (const layout of [
+            { width: 199, height: 500, pageZoom: 1 },
+            { width: 1601, height: 500, pageZoom: 1 },
+            { width: 500, height: 199, pageZoom: 1 },
+            { width: 500, height: 1201, pageZoom: 1 },
+            { width: 500, height: 500, pageZoom: 0.49 },
+            { width: 500, height: 500, pageZoom: 2.01 },
+            { width: 500, height: 500 }
+        ]) {
+            const next = validState();
+            next.layout = layout;
+            assert.equal(isAppState(next), false, `layout ${JSON.stringify(layout)} should be rejected`);
         }
     });
 });
