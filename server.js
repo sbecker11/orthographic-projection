@@ -1,34 +1,12 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { isAppState } = require('./public/js/app-state');
 const app = express();
 const port = 3000;
 const statePath = path.join(__dirname, 'public', 'app_state.json');
 
 app.use(express.json());
-
-function isFiniteNumber(value) {
-    return typeof value === 'number' && Number.isFinite(value);
-}
-
-function inRange(value, min, max) {
-    return isFiniteNumber(value) && value >= min && value <= max;
-}
-
-function isAppState(body) {
-    if (!body || typeof body !== 'object' || !Array.isArray(body.points) || !Array.isArray(body.texts)) {
-        return false;
-    }
-    const themeOk = body.theme === 'light' || body.theme === 'dark';
-    const sliders = body.sliders;
-    const slidersOk = sliders
-        && inRange(sliders.zoom, 0.2, 2)
-        && inRange(sliders.phi, 0, 360)
-        && inRange(sliders.theta, -180, 180);
-    const pointsOk = body.points.every((point) => point && isFiniteNumber(point.x) && isFiniteNumber(point.y));
-    const textsOk = body.texts.every((item) => item && typeof item.text === 'string' && item.text.trim() !== '' && isFiniteNumber(item.x) && isFiniteNumber(item.y));
-    return themeOk && slidersOk && pointsOk && textsOk;
-}
 
 // Local instances save point and text changes. Remote hosts only read public/app_state.json.
 app.post('/api/state', (req, res) => {

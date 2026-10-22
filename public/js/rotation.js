@@ -604,11 +604,8 @@ function applySliders(sliders) {
 }
 
 function applyAppState(state) {
-    if (!state || !Array.isArray(state.points) || !Array.isArray(state.texts)) {
-        throw new Error('[app-state] public/app_state.json must contain points and texts arrays');
-    }
-    if (state.theme !== 'light' && state.theme !== 'dark') {
-        throw new Error('[app-state] public/app_state.json theme must be "light" or "dark"');
+    if (!isAppState(state)) {
+        throw new Error('[app-state] public/app_state.json must contain theme ("light" or "dark"), sliders.zoom (0.2–2), sliders.phi (0–360), sliders.theta (-180–180), points [{x, y}], and texts [{text, x, y}]');
     }
     applyTheme(state.theme);
     applySliders(state.sliders);
