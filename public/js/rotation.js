@@ -203,47 +203,41 @@ function repaintTextSprites() {
     });
 }
 
+function currentRotationAxis() {
+    const rotationAngle = parseFloat(document.getElementById('rotationAngle').value) * Math.PI / 180;
+    const lineAngleRad = parseFloat(document.getElementById('lineAngle').value) * Math.PI / 180;
+    const axis = new THREE.Vector3(
+        Math.cos(lineAngleRad),
+        Math.sin(lineAngleRad),
+        0
+    ).normalize();
+    return { axis, rotationAngle };
+}
+
+// Place text on the unrotated plane, then project it onto the current rotation.
+function placeText(text, x, y) {
+    const { axis, rotationAngle } = currentRotationAxis();
+    const textMesh = createTextSprite(text, 0, 0);
+    const originalPosition = new THREE.Vector3(x, y, 0);
+    textMesh.userData.originalPosition = originalPosition.clone();
+    textMesh.position.copy(applyRodriguesRotation(originalPosition, axis, rotationAngle));
+    textMesh.userData.originalRotation = new THREE.Euler(0, 0, 0);
+    const initialRotationMatrix = new THREE.Matrix4();
+    initialRotationMatrix.makeRotationAxis(axis, rotationAngle);
+    textMesh.setRotationFromMatrix(initialRotationMatrix);
+    scene.add(textMesh);
+    textObjects.push(textMesh);
+}
+
 // Function to add text, projected onto the rotated plane
 function addText() {
     const textInput = document.getElementById('textInput');
     const text = textInput.value.trim();
-    
+
     if (text) {
-        // Get current rotation state
-        const rotationAngle = parseFloat(document.getElementById('rotationAngle').value) * Math.PI / 180;
-        const lineAngleRad = parseFloat(document.getElementById('lineAngle').value) * Math.PI / 180;
-        
-        // Create rotation axis vector
-        const axis = new THREE.Vector3(
-            Math.cos(lineAngleRad),
-            Math.sin(lineAngleRad),
-            0
-        ).normalize();
-
-        // Create text mesh at the origin (0,0,0) initially
-        const textMesh = createTextSprite(text, 0, 0); 
-        
-        // Define and store the original (unrotated) position
-        const originalPosition = new THREE.Vector3(0, 0, 0);
-        textMesh.userData.originalPosition = originalPosition.clone(); // Store the original
-
-        // Calculate the position on the currently rotated plane
-        const rotatedPosition = applyRodriguesRotation(originalPosition, axis, rotationAngle);
-        textMesh.position.copy(rotatedPosition); // Set initial position
-
-        // Store the original (unrotated) rotation
-        textMesh.userData.originalRotation = new THREE.Euler(0, 0, 0); // Store original orientation
-
-        // Calculate and apply the initial orientation based on current rotation
-        const initialRotationMatrix = new THREE.Matrix4();
-        initialRotationMatrix.makeRotationAxis(axis, rotationAngle);
-        textMesh.setRotationFromMatrix(initialRotationMatrix); // Set initial orientation
-        
-        scene.add(textMesh);
-        textObjects.push(textMesh);
-        
-        // Clear input
+        placeText(text, 0, 0);
         textInput.value = '';
+        saveAppState();
     }
 }
 
@@ -253,50 +247,29 @@ function clearAllText() {
         scene.remove(text);
     });
     textObjects.length = 0;
+    saveAppState();
 }
 
-// Add text controls event listeners
-document.getElementById('addText').addEventListener('click', addText);
-document.getElementById('clearText').addEventListener('click', clearAllText);
-document.getElementById('textInput').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        addText();
-    }
-});
-
-// Function to create a random point
-function createRandomPoint() {
-    // Get current rotation state
-    const rotationAngle = parseFloat(document.getElementById('rotationAngle').value) * Math.PI / 180;
-    const lineAngleRad = parseFloat(document.getElementById('lineAngle').value) * Math.PI / 180;
-    
-    // Create rotation axis vector
-    const axis = new THREE.Vector3(
-        Math.cos(lineAngleRad),
-        Math.sin(lineAngleRad),
-        0
-    ).normalize();
-    
-    // Create a point in the original XY plane
+// Place a point on the unrotated plane, then project it onto the current rotation.
+function placePoint(x, y) {
+    const { axis, rotationAngle } = currentRotationAxis();
     const pointGeometry = new THREE.SphereGeometry(0.1, 32, 32);
-    const x = (Math.random() - 0.5) * 10; // Random x between -5 and 5
-    const y = (Math.random() - 0.5) * 10; // Random y between -5 and 5
-    
-    // Create the original position vector
     const originalPosition = new THREE.Vector3(x, y, 0);
-    
-    // Apply the current rotation to get the point's position in the rotated plane
     const rotatedPosition = applyRodriguesRotation(originalPosition, axis, rotationAngle);
-    
     const randomPoint = new THREE.Mesh(pointGeometry, randomPointMaterial);
     randomPoint.position.copy(rotatedPosition);
-    
-    // Store the original position for future rotations
     randomPoint.userData.originalPosition = originalPosition;
-    
     scene.add(randomPoint);
     randomPoints.push(randomPoint);
     updatePointCount();
+}
+
+// Function to create a random point
+function createRandomPoint() {
+    const x = (Math.random() - 0.5) * 10; // Random x between -5 and 5
+    const y = (Math.random() - 0.5) * 10; // Random y between -5 and 5
+    placePoint(x, y);
+    saveAppState();
 }
 
 // Function to remove the last added point
@@ -305,6 +278,7 @@ function removeLastPoint() {
         const point = randomPoints.pop();
         scene.remove(point);
         updatePointCount();
+        saveAppState();
     }
 }
 
@@ -313,10 +287,6 @@ function updatePointCount() {
     const pointCount = document.getElementById('pointCount');
     pointCount.textContent = `${randomPoints.length} points`;
 }
-
-// Add button event listeners
-document.getElementById('addPoint').addEventListener('click', createRandomPoint);
-document.getElementById('removePoint').addEventListener('click', removeLastPoint);
 
 // Get UI elements
 const pointX = document.getElementById('pointX');
@@ -561,8 +531,68 @@ function initThemeToggle() {
     });
 }
 
+let appStateReady = false;
+
+function isLocalStateHost() {
+    return location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+}
+
+function currentAppState() {
+    return {
+        points: randomPoints.map((point) => ({
+            x: point.userData.originalPosition.x,
+            y: point.userData.originalPosition.y
+        })),
+        texts: textObjects.map((textMesh) => ({
+            text: textMesh.userData.label,
+            x: textMesh.userData.originalPosition.x,
+            y: textMesh.userData.originalPosition.y
+        }))
+    };
+}
+
+function saveAppState() {
+    if (!appStateReady || !isLocalStateHost()) {
+        return;
+    }
+    fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentAppState())
+    }).catch((error) => {
+        console.error('[app-state] Failed to save public/app_state.json', error);
+        console.log('Remedy: The scene keeps this change until reload. The local server must be running to write the file.');
+    });
+}
+
+function applyAppState(state) {
+    if (!state || !Array.isArray(state.points) || !Array.isArray(state.texts)) {
+        throw new Error('[app-state] public/app_state.json must contain points and texts arrays');
+    }
+    state.points.forEach((point) => {
+        if (typeof point.x !== 'number' || typeof point.y !== 'number') {
+            throw new Error('[app-state] each point must have numeric x and y');
+        }
+        placePoint(point.x, point.y);
+    });
+    state.texts.forEach((item) => {
+        if (typeof item.text !== 'string' || typeof item.x !== 'number' || typeof item.y !== 'number') {
+            throw new Error('[app-state] each text must have text, x, and y');
+        }
+        placeText(item.text, item.x, item.y);
+    });
+}
+
+async function loadAppState() {
+    const response = await fetch('app_state.json', { cache: 'no-store' });
+    if (!response.ok) {
+        throw new Error(`[app-state] Failed to load app_state.json (${response.status})`);
+    }
+    applyAppState(await response.json());
+}
+
 // Wait for DOM to be ready before setting up event listeners
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     initThemeToggle();
 
     // Add event listeners
@@ -579,6 +609,14 @@ document.addEventListener('DOMContentLoaded', function() {
             addText();
         }
     });
+
+    try {
+        await loadAppState();
+    } catch (error) {
+        console.error('[app-state] Startup state was not applied', error);
+        console.log('Remedy: Fix public/app_state.json and reload. Remote pages only read this committed file.');
+    }
+    appStateReady = true;
 
     // Initial update and start animation
     updateValues();
