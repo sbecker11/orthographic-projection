@@ -1,11 +1,11 @@
-# Orthographic Projection Demo
+# Orthographic Projection
 
 <!-- SUMMARY:START generated from workspace-linkedin-profile/Projects.json by scripts/build_readme_header.py; edit there -->
-<a href="https://sbecker11.github.io/orthographic-projection-demo/" target="_blank" rel="noopener noreferrer"><img src="Orthographic-Projection-Demo.png" alt="Orthographic projection demo"></a>
+<a href="https://sbecker11.github.io/orthographic-projection/" target="_blank" rel="noopener noreferrer"><img src="Orthographic-Projection.png" alt="Orthographic projection"></a>
 
-Orthographic projection demo for rotating 2D plane content around an in-plane axis, using Rodrigues rotation.
+Orthographic projection for rotating 2D plane content around an in-plane axis, using Rodrigues rotation.
 
-**RunMe:** [https://sbecker11.github.io/orthographic-projection-demo/](https://sbecker11.github.io/orthographic-projection-demo/)
+**RunMe:** [https://sbecker11.github.io/orthographic-projection/](https://sbecker11.github.io/orthographic-projection/)
 
 **Skills:** Projective Geometry · Rodrigues Rotation · Computer Graphics · Three.js · JavaScript · Node.js · Express.js · HTML · CSS · Algorithms · Front-End Development · Automated Software Testing (JUnit/Jest/Vitest/PyTest)
 <!-- SUMMARY:END -->
@@ -70,4 +70,4 @@ grid in the X-Y plane, with origin at window center. The +X axis is shown in red
 *   A simple **Node.js/Express** server (`server.js`) serves the static HTML, CSS, and JavaScript files. 
 
 ## Contributions
-Kudos to Cursor 1.96.2, NodeJS v23.6.0, MacOS 15.4.1, and Gemini 2.5-pro - the tools that allowed me create this little demo app in less than 3 hours in 100% hands-off fashion.
+Kudos to Cursor 1.96.2, NodeJS v23.6.0, MacOS 15.4.1, and Gemini 2.5-pro - the tools that allowed me create this little app in less than 3 hours in 100% hands-off fashion.
