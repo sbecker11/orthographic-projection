@@ -525,10 +525,16 @@ function initThemeToggle() {
 
     lightButton.addEventListener('click', function () {
         applyTheme('light');
+        saveAppState();
     });
     darkButton.addEventListener('click', function () {
         applyTheme('dark');
+        saveAppState();
     });
+}
+
+function currentTheme() {
+    return document.documentElement.classList.contains('dark-theme') ? 'dark' : 'light';
 }
 
 let appStateReady = false;
@@ -537,8 +543,22 @@ function isLocalStateHost() {
     return location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 }
 
+function readSlider(id) {
+    const value = parseFloat(document.getElementById(id).value);
+    if (!Number.isFinite(value)) {
+        throw new Error(`[app-state] slider ${id} is not a number`);
+    }
+    return value;
+}
+
 function currentAppState() {
     return {
+        theme: currentTheme(),
+        sliders: {
+            zoom: readSlider('zoomFactor'),
+            phi: readSlider('lineAngle'),
+            theta: readSlider('rotationAngle')
+        },
         points: randomPoints.map((point) => ({
             x: point.userData.originalPosition.x,
             y: point.userData.originalPosition.y
@@ -551,7 +571,15 @@ function currentAppState() {
     };
 }
 
+let saveTimer = null;
+
+function saveAppStateSoon() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveAppState, 200);
+}
+
 function saveAppState() {
+    clearTimeout(saveTimer);
     if (!appStateReady || !isLocalStateHost()) {
         return;
     }
@@ -565,10 +593,25 @@ function saveAppState() {
     });
 }
 
+function applySliders(sliders) {
+    if (!sliders || typeof sliders.zoom !== 'number' || typeof sliders.phi !== 'number' || typeof sliders.theta !== 'number') {
+        throw new Error('[app-state] public/app_state.json must contain sliders.zoom, sliders.phi, and sliders.theta');
+    }
+    document.getElementById('zoomFactor').value = String(sliders.zoom);
+    document.getElementById('lineAngle').value = String(sliders.phi);
+    document.getElementById('rotationAngle').value = String(sliders.theta);
+    updateZoom();
+}
+
 function applyAppState(state) {
     if (!state || !Array.isArray(state.points) || !Array.isArray(state.texts)) {
         throw new Error('[app-state] public/app_state.json must contain points and texts arrays');
     }
+    if (state.theme !== 'light' && state.theme !== 'dark') {
+        throw new Error('[app-state] public/app_state.json theme must be "light" or "dark"');
+    }
+    applyTheme(state.theme);
+    applySliders(state.sliders);
     state.points.forEach((point) => {
         if (typeof point.x !== 'number' || typeof point.y !== 'number') {
             throw new Error('[app-state] each point must have numeric x and y');
@@ -596,9 +639,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     initThemeToggle();
 
     // Add event listeners
-    document.getElementById('zoomFactor').addEventListener('input', updateZoom);
-    document.getElementById('lineAngle').addEventListener('input', updateValues);
-    document.getElementById('rotationAngle').addEventListener('input', updateValues);
+    document.getElementById('zoomFactor').addEventListener('input', function () {
+        updateZoom();
+        saveAppStateSoon();
+    });
+    document.getElementById('lineAngle').addEventListener('input', function () {
+        updateValues();
+        saveAppStateSoon();
+    });
+    document.getElementById('rotationAngle').addEventListener('input', function () {
+        updateValues();
+        saveAppStateSoon();
+    });
     document.getElementById('resetView').addEventListener('click', resetView);
     document.getElementById('addPoint').addEventListener('click', createRandomPoint);
     document.getElementById('removePoint').addEventListener('click', removeLastPoint);
@@ -643,4 +695,6 @@ function resetView() {
     // Update display values
     updateValues();
     updateZoom();
-} 
+    saveAppState();
+}
+ 
