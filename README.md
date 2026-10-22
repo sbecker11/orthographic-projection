@@ -1,7 +1,7 @@
 # Orthographic Projection
 
 <!-- SUMMARY:START generated from workspace-linkedin-profile/Projects.json by scripts/build_readme_header.py; edit there -->
-<a href="https://sbecker11.github.io/orthographic-projection/" target="_blank" rel="noopener noreferrer"><img src="Orthographic-Projection.png" alt="Orthographic projection"></a>
+<a href="https://sbecker11.github.io/coordinate-axes/" target="_blank" rel="noopener noreferrer"><img src="Orthographic-Projection.png" alt="Orthographic projection"></a>
 
 Orthographic projection for rotating 2D plane content around an in-plane axis, using Rodrigues rotation.
 
